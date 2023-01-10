@@ -1,0 +1,72 @@
+name: Deploy to Section
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  REPO_NAME: ${{ github.repository }} # Uses the GitHub repository name as image name by default. Override if desired.
+  APP_NAME: cicd-demo # k8s deployment's app name (refer to k8s/deploy.yaml)
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: downcase REPO
+        run: |
+          echo "LOWERCASE_REPO=${REPO_NAME,,}" >>${GITHUB_ENV}
+        
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.LOWERCASE_REPO }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Deploy on Section
+        env:
+          SECTION_K8S_API_URL: "${{ secrets.SECTION_K8S_API_URL }}"
+          SECTION_API_TOKEN: "${{ secrets.SECTION_API_TOKEN }}"
+          CERT_PATH: "/etc/ssl/certs/ca-certificates.crt"
+        run: | 
+          #######################################
+          # Configure kubectl to talk to Section
+          #######################################
+
+          kubectl config set-cluster section-cluster --server=$SECTION_K8S_API_URL --certificate-authority=$cert
+          kubectl config set-credentials section-user --token=$SECTION_API_TOKEN
+          kubectl config set-context section --cluster=section-cluster --user=section-user
+
+          kubectl config use-context section
+
+          ########################
+          # Deploy k8s YAML file
+          ########################
+
+          IMAGE_NAME=${REGISTRY}/${LOWERCASE_REPO}
+
+          envsubst '$IMAGE_NAME' < ../k8s/deploy.yaml | kubectl apply -f -
+
+          kubectl rollout restart deployment $APP_NAME
