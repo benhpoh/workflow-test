@@ -56,13 +56,11 @@ jobs:
           # Configure kubectl to talk to Section
           #######################################
 
-          kubectl config set-cluster section-cluster --server=$SECTION_K8S_API_URL --certificate-authority=$cert
+          kubectl config set-cluster section-cluster --server=$SECTION_K8S_API_URL --certificate-authority=$CERT_PATH
           kubectl config set-credentials section-user --token=$SECTION_API_TOKEN
           kubectl config set-context section --cluster=section-cluster --user=section-user
 
           kubectl config use-context section
-
-          kubectl get pods
 
           ########################
           # Deploy k8s YAML file
@@ -70,10 +68,7 @@ jobs:
 
           envsubst '$IMAGE_NAME' < ./k8s/deploy.yaml > ./k8s/deploy.yaml.temp
           mv ./k8s/deploy.yaml.temp ./k8s/deploy.yaml
-          ls ./k8s/
-          cat ./k8s/deploy.yaml
 
-          kubectl --version
           kubectl apply -f ./k8s/deploy.yaml
 
           kubectl rollout restart deployment $APP_NAME
