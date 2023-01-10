@@ -62,6 +62,8 @@ jobs:
 
           kubectl config use-context section
 
+          kubectl get pods
+
           ########################
           # Deploy k8s YAML file
           ########################
@@ -71,6 +73,7 @@ jobs:
           ls ./k8s/
           cat ./k8s/deploy.yaml
 
+          kubectl --version
           kubectl apply -f ./k8s/deploy.yaml
 
           kubectl rollout restart deployment $APP_NAME
