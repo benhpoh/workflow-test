@@ -67,6 +67,6 @@ jobs:
 
           IMAGE_NAME=${REGISTRY}/${LOWERCASE_REPO}
 
-          envsubst '$IMAGE_NAME' < ../k8s/deploy.yaml | kubectl apply -f -
+          envsubst '$IMAGE_NAME' < ./k8s/deploy.yaml | kubectl apply -f -
 
           kubectl rollout restart deployment $APP_NAME
